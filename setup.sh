@@ -6,13 +6,33 @@ IMAGE_NAME="nothing035/mcm:latest"
 CONTAINER_NAME="mcm"
 DEFAULT_DATA_DIR="$(pwd -P)"
 DEFAULT_PORT="80"
+PROMPT_INPUT="/dev/tty"
+
+read_prompt() {
+  local prompt="$1"
+  local mode="${2:-}"
+  local input
+
+  if [[ "$mode" == "silent" ]]; then
+    if ! IFS= read -r -s -u 3 -p "$prompt " input; then
+      echo "Failed to read interactive input from $PROMPT_INPUT." >&2
+      exit 1
+    fi
+    printf '\n' >&2
+  elif ! IFS= read -r -u 3 -p "$prompt " input; then
+    echo "Failed to read interactive input from $PROMPT_INPUT." >&2
+    exit 1
+  fi
+
+  printf '%s\n' "$input"
+}
 
 prompt_with_default() {
   local prompt="$1"
   local default_value="$2"
   local input
 
-  read -r -p "$prompt [$default_value]: " input
+  input="$(read_prompt "$prompt [$default_value]:")"
   if [[ -z "$input" ]]; then
     printf '%s\n' "$default_value"
     return
@@ -26,7 +46,7 @@ prompt_nonempty() {
   local input
 
   while true; do
-    read -r -p "$prompt: " input
+    input="$(read_prompt "$prompt:")"
     if [[ -n "$input" ]]; then
       printf '%s\n' "$input"
       return
@@ -40,15 +60,13 @@ prompt_password() {
   local confirmation
 
   while true; do
-    read -r -s -p "Password: " password
-    echo
+    password="$(read_prompt "Password:" "silent")"
     if [[ -z "$password" ]]; then
       echo "Password cannot be empty."
       continue
     fi
 
-    read -r -s -p "Confirm password: " confirmation
-    echo
+    confirmation="$(read_prompt "Confirm password:" "silent")"
 
     if [[ "$password" == "$confirmation" ]]; then
       printf '%s\n' "$password"
@@ -86,6 +104,13 @@ echo "MCM deployment"
 echo
 
 require_command docker
+
+if [[ ! -r "$PROMPT_INPUT" ]]; then
+  echo "Interactive terminal not available at $PROMPT_INPUT." >&2
+  exit 1
+fi
+
+exec 3<"$PROMPT_INPUT"
 
 if [[ ! -S /var/run/docker.sock ]]; then
   echo "Docker socket not found at /var/run/docker.sock." >&2
