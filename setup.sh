@@ -165,7 +165,7 @@ docker run -d \
   -e MCM_AUTH_USERNAME="$AUTH_USERNAME" \
   -e MCM_AUTH_PASSWORD_HASH="$PASSWORD_HASH" \
   -e MCM_SESSION_SECRET="$SESSION_SECRET" \
-  -e MCM_COOKIE_SECURE=true \
+  -e MCM_COOKIE_SECURE=false \
   -v "$DATA_DIR:/var/lib/mcm" \
   -v /var/run/docker.sock:/var/run/docker.sock \
   "$IMAGE_NAME" >/dev/null
