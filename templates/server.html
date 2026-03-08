@@ -1,0 +1,1595 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>MCM - {{ server.name }}</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <style>
+        :root {
+            --bg: #0d0d0d;
+            --surface: #131313;
+            --line: #1c1c1c;
+            --text: #c8c8c8;
+            --muted: #444;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --mono: "Cascadia Code", "Consolas", ui-monospace, monospace;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Bahnschrift", system-ui, sans-serif;
+            color: var(--text);
+            background: var(--bg);
+        }
+
+        a { color: inherit; text-decoration: none; }
+
+        main {
+            width: min(1040px, calc(100% - 2rem));
+            margin: 0 auto;
+            padding: 1.75rem 0 4rem;
+        }
+
+        /* ── Back link ── */
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 1.75rem;
+            transition: color 100ms;
+        }
+
+        .back-link:hover { color: var(--text); }
+
+        /* ── Server header ── */
+        .srv-hdr {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--line);
+            margin-bottom: 0;
+        }
+
+        .srv-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text);
+            margin: 0 0 0.3rem;
+            line-height: 1;
+        }
+
+        .srv-sub {
+            font-size: 0.72rem;
+            color: var(--muted);
+            font-family: var(--mono);
+        }
+
+        /* ── Status ── */
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.42rem;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            flex-shrink: 0;
+            margin-top: 0.4rem;
+        }
+
+        .status::before {
+            content: "";
+            width: 5px;
+            height: 5px;
+            border-radius: 1px;
+            background: currentColor;
+            flex-shrink: 0;
+        }
+
+        .status-running { color: var(--success); }
+        .status-stopped { color: var(--danger); }
+
+        /* ── Actions ── */
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .actions form { display: contents; }
+
+        .btn {
+            appearance: none;
+            background: none;
+            border: 0;
+            padding: 0;
+            font: inherit;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            cursor: pointer;
+            text-decoration: none;
+            transition: color 100ms;
+        }
+
+        .btn:hover { color: var(--text); }
+        .btn:disabled { opacity: 0.25; cursor: not-allowed; }
+        .btn-stop:hover { color: var(--danger); }
+        .btn-delete:hover { color: var(--danger); }
+        .sep { color: var(--line); user-select: none; }
+
+        .confirm-shell {
+            position: fixed;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            padding: 1rem;
+            background:
+                radial-gradient(circle at top, rgba(239, 68, 68, 0.12), transparent 28rem),
+                rgba(0, 0, 0, 0.78);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 150ms ease;
+            z-index: 160;
+        }
+
+        .confirm-shell.open {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .confirm-card {
+            width: min(440px, 100%);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 35%),
+                var(--surface);
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+            transform: translateY(10px) scale(0.985);
+            transition: transform 180ms cubic-bezier(.22,.68,0,1.12);
+        }
+
+        .confirm-shell.open .confirm-card {
+            transform: translateY(0) scale(1);
+        }
+
+        .confirm-head,
+        .confirm-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.9rem 1rem;
+        }
+
+        .confirm-head {
+            border-bottom: 1px solid var(--line);
+        }
+
+        .confirm-kicker {
+            font-size: 0.64rem;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--danger);
+        }
+
+        .confirm-close {
+            appearance: none;
+            background: none;
+            border: 0;
+            color: var(--muted);
+            cursor: pointer;
+            font: inherit;
+            font-size: 1.1rem;
+            line-height: 1;
+            padding: 0.1rem 0.2rem;
+            transition: color 100ms;
+        }
+
+        .confirm-close:hover { color: var(--text); }
+
+        .confirm-body {
+            padding: 1rem;
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .confirm-title {
+            margin: 0;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .confirm-copy {
+            margin: 0;
+            color: #9a9a9a;
+            font-size: 0.8rem;
+            line-height: 1.7;
+        }
+
+        .confirm-actions {
+            border-top: 1px solid var(--line);
+            justify-content: flex-end;
+        }
+
+        .btn-solid-danger {
+            background: linear-gradient(180deg, #ff7b7b, #ef4444);
+            border-color: rgba(239, 68, 68, 0.45);
+            color: #210909;
+        }
+
+        .btn-solid-muted {
+            background: #181818;
+            border-color: #252525;
+            color: var(--text);
+        }
+
+        /* ── Sections ── */
+        .section { padding: 1.1rem 0; }
+        .section + .section { border-top: 1px solid var(--line); }
+
+        .sec-label {
+            font-size: 0.63rem;
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin: 0 0 0.75rem;
+        }
+
+        /* ── KV rows ── */
+        .kv { display: grid; }
+
+        .kv-row {
+            display: grid;
+            grid-template-columns: 10rem 1fr;
+            gap: 1rem;
+            padding: 0.38rem 0;
+            align-items: baseline;
+        }
+
+        .kv-k {
+            font-size: 0.78rem;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        .kv-v {
+            font-size: 0.8rem;
+            font-family: var(--mono);
+            color: var(--text);
+            overflow-wrap: anywhere;
+        }
+
+        .sec-empty {
+            font-size: 0.78rem;
+            color: var(--muted);
+            font-family: var(--mono);
+            margin: 0;
+        }
+
+        .env-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.9rem;
+            margin-bottom: 0.8rem;
+            flex-wrap: wrap;
+        }
+
+        .env-head .sec-label {
+            margin-bottom: 0;
+        }
+
+        .env-panel {
+            display: grid;
+            gap: 0.85rem;
+        }
+
+        .env-form {
+            display: grid;
+            gap: 0.85rem;
+        }
+
+        .env-row-value {
+            min-width: 0;
+        }
+
+        .env-row-input {
+            display: none;
+        }
+
+        [data-environment-panel][data-editing="true"] .env-row-text {
+            display: none;
+        }
+
+        [data-environment-panel][data-editing="true"] .env-row-input {
+            display: block;
+        }
+
+        .env-input {
+            width: 100%;
+            min-width: 0;
+            appearance: none;
+            background: #0d0d0d;
+            border: 1px solid var(--line);
+            border-radius: 3px;
+            color: var(--text);
+            padding: 0.68rem 0.75rem;
+            font: inherit;
+            font-size: 0.78rem;
+            font-family: var(--mono);
+        }
+
+        .env-input:focus {
+            outline: none;
+            border-color: #3c3c3c;
+        }
+
+        .env-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .env-actions[hidden] {
+            display: none;
+        }
+
+        .browser-note {
+            margin: 0 0 0.9rem;
+            font-size: 0.76rem;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .browser-error {
+            margin: 0 0 0.9rem;
+            padding: 0.75rem 0.85rem;
+            border: 1px solid rgba(239, 68, 68, 0.22);
+            border-radius: 3px;
+            background: rgba(239, 68, 68, 0.08);
+            color: #fca5a5;
+            font-size: 0.76rem;
+            font-family: var(--mono);
+        }
+
+        .browser-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+            gap: 1rem;
+        }
+
+        .browser-panel {
+            min-width: 0;
+            border: 1px solid var(--line);
+            border-radius: 3px;
+            background: var(--surface);
+            overflow: hidden;
+        }
+
+        .browser-panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.8rem 0.95rem;
+            border-bottom: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .browser-panel-title {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .breadcrumbs {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.76rem;
+            font-family: var(--mono);
+        }
+
+        .breadcrumb-link {
+            color: var(--muted);
+            transition: color 100ms;
+        }
+
+        .breadcrumb-link:hover,
+        .breadcrumb-current {
+            color: var(--text);
+        }
+
+        .breadcrumb-sep {
+            color: var(--line);
+            user-select: none;
+        }
+
+        .browser-list {
+            display: grid;
+        }
+
+        .browser-entry {
+            display: grid;
+            gap: 0.4rem;
+            padding: 0.8rem 0.95rem;
+            border-bottom: 1px solid var(--line);
+            transition: background 100ms, color 100ms;
+        }
+
+        .browser-entry:last-child {
+            border-bottom: 0;
+        }
+
+        .browser-entry:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .browser-entry.is-selected {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .browser-entry-main {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.8rem;
+            min-width: 0;
+        }
+
+        .browser-entry-name {
+            min-width: 0;
+            font-size: 0.8rem;
+            font-family: var(--mono);
+            color: var(--text);
+            overflow-wrap: anywhere;
+        }
+
+        .browser-entry-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem 0.75rem;
+            font-size: 0.7rem;
+            color: var(--muted);
+            font-family: var(--mono);
+        }
+
+        .browser-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 4rem;
+            padding: 0.22rem 0.45rem;
+            border: 1px solid #2b2b2b;
+            border-radius: 999px;
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+            flex-shrink: 0;
+        }
+
+        .browser-badge.is-dir {
+            color: #a3a3a3;
+            border-color: #353535;
+        }
+
+        .browser-body {
+            padding: 0.95rem;
+            display: grid;
+            gap: 0.9rem;
+        }
+
+        .browser-path {
+            margin: 0;
+            font-size: 0.78rem;
+            color: var(--text);
+            font-family: var(--mono);
+            overflow-wrap: anywhere;
+        }
+
+        .preview-meta {
+            display: grid;
+            gap: 0.45rem;
+        }
+
+        .preview-meta-row {
+            display: grid;
+            grid-template-columns: 7rem 1fr;
+            gap: 0.9rem;
+            align-items: baseline;
+        }
+
+        .preview-meta-key {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .preview-meta-value {
+            font-size: 0.76rem;
+            color: var(--text);
+            font-family: var(--mono);
+            overflow-wrap: anywhere;
+        }
+
+        .preview-pre {
+            margin: 0;
+            max-height: 30rem;
+            overflow: auto;
+            padding: 0.9rem;
+            border: 1px solid var(--line);
+            border-radius: 3px;
+            background: #0d0d0d;
+            color: var(--text);
+            font-size: 0.78rem;
+            font-family: var(--mono);
+            line-height: 1.5;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .preview-note {
+            margin: 0;
+            font-size: 0.75rem;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        #data-files {
+            scroll-margin-top: 1rem;
+        }
+
+        .editor-form {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .world-form {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .world-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .world-file-input {
+            max-width: 100%;
+            color: var(--muted);
+            font: inherit;
+            font-size: 0.76rem;
+            font-family: var(--mono);
+        }
+
+        .logs-shell {
+            display: grid;
+            gap: 0;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+                #101010;
+            overflow: hidden;
+        }
+
+        .logs-head {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.5rem;
+            padding: 0.55rem 0.8rem;
+            border-bottom: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.015);
+        }
+
+        .logs-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+        }
+
+        .logs-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.24rem 0.48rem;
+            border: 1px solid #2d2d2d;
+            border-radius: 999px;
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-family: var(--mono);
+            white-space: nowrap;
+        }
+
+        .logs-screen {
+            max-height: 28rem;
+            overflow: auto;
+            padding: 1rem;
+            background:
+                radial-gradient(circle at top, rgba(34, 197, 94, 0.05), transparent 28%),
+                #0a0a0a;
+        }
+
+        .logs-pre {
+            margin: 0;
+            min-height: 16rem;
+            color: #d7d7d7;
+            font-size: 0.78rem;
+            font-family: var(--mono);
+            line-height: 1.55;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .logs-footer {
+            border-top: 1px solid var(--line);
+            background: #0a0a0a;
+        }
+
+        .logs-command-form {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.9rem 1rem;
+        }
+
+        .logs-prompt {
+            flex-shrink: 0;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text);
+            font-family: var(--mono);
+        }
+
+        .logs-command-input {
+            width: 100%;
+            min-width: 0;
+            appearance: none;
+            background: transparent;
+            border: 0;
+            color: var(--text);
+            padding: 0;
+            font: inherit;
+            font-size: 0.8rem;
+            font-family: var(--mono);
+        }
+
+        .logs-command-input::placeholder {
+            color: #565656;
+        }
+
+        .logs-command-input:focus {
+            outline: none;
+        }
+
+        .logs-command-input:disabled {
+            cursor: not-allowed;
+        }
+
+        .logs-status-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0 1rem 0.9rem;
+            background: #0a0a0a;
+            flex-wrap: wrap;
+        }
+
+        .logs-status {
+            margin: 0;
+            font-size: 0.7rem;
+            color: var(--muted);
+            font-family: var(--mono);
+        }
+
+        .logs-status[data-state="success"] {
+            color: var(--success);
+        }
+
+        .logs-status[data-state="error"] {
+            color: var(--danger);
+        }
+
+        .editor-note {
+            margin: 0;
+            font-size: 0.76rem;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .editor-status {
+            margin: 0;
+            font-size: 0.74rem;
+            font-family: var(--mono);
+            color: var(--success);
+        }
+
+        .editor-status[data-state="error"] {
+            color: var(--danger);
+        }
+
+        .editor-textarea {
+            width: 100%;
+            min-height: 20rem;
+            resize: vertical;
+            background: #0d0d0d;
+            border: 1px solid var(--line);
+            color: var(--text);
+            border-radius: 3px;
+            padding: 0.85rem 0.9rem;
+            font: inherit;
+            font-size: 0.8rem;
+            font-family: var(--mono);
+            line-height: 1.5;
+        }
+
+        .editor-textarea:focus {
+            outline: none;
+            border-color: #383838;
+        }
+
+        .btn-solid {
+            appearance: none;
+            width: fit-content;
+            border: 1px solid #383838;
+            border-radius: 3px;
+            padding: 0.55rem 1rem;
+            background: #1c1c1c;
+            color: var(--text);
+            font: inherit;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background 100ms, border-color 100ms;
+        }
+
+        .btn-solid:hover {
+            background: #242424;
+            border-color: #484848;
+        }
+
+        .btn-solid:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 860px) {
+            .browser-grid { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 520px) {
+            main { width: min(100%, calc(100% - 1rem)); }
+            .kv-row { grid-template-columns: 1fr; gap: 0.1rem; }
+            .kv-k { font-size: 0.68rem; }
+            .preview-meta-row { grid-template-columns: 1fr; gap: 0.18rem; }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <a class="back-link" href="/">&#8592; All servers</a>
+
+        <div class="srv-hdr">
+            <div>
+                <h1 class="srv-name">{{ server.name }}</h1>
+                <div class="srv-sub"><span data-server-type>{{ server.server_type }}</span> &middot; {{ server.port }} &middot; {{ server.container_name }}</div>
+            </div>
+            <span class="status status-{{ server.status }}">{{ server.status }}</span>
+        </div>
+
+        <div class="actions">
+            <form method="post" action="/servers/{{ server.id }}/start/view?next=/servers/{{ server.id }}/view">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button class="btn" type="submit" {% if server.status == "running" %}disabled{% endif %}>Start</button>
+            </form>
+            <span class="sep">/</span>
+            <form method="post" action="/servers/{{ server.id }}/stop/view?next=/servers/{{ server.id }}/view">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button class="btn btn-stop" type="submit" {% if server.status == "stopped" %}disabled{% endif %}>Stop</button>
+            </form>
+            <span class="sep">/</span>
+            <form
+                method="post"
+                action="/servers/{{ server.id }}/delete/view?next=/"
+                data-confirm-form
+                data-confirm-title="Delete {{ server.name }}?"
+                data-confirm-message="This removes the container, database record, and all files in {{ server.data_dir }}."
+                data-confirm-submit="Delete server"
+            >
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button class="btn btn-delete" type="submit">Delete</button>
+            </form>
+        </div>
+
+        <div class="section">
+            <div class="kv">
+                <div class="kv-row"><span class="kv-k">Image</span><span class="kv-v">{{ server.image }}</span></div>
+                <div class="kv-row"><span class="kv-k">Version</span><span class="kv-v" data-server-version>{{ server.version }}</span></div>
+                <div class="kv-row"><span class="kv-k">Created</span><span class="kv-v">{{ server.created_at }}</span></div>
+                <div class="kv-row"><span class="kv-k">Stop duration</span><span class="kv-v" data-server-stop-duration>{{ server.stop_duration }}s</span></div>
+                <div class="kv-row"><span class="kv-k">Container ID</span><span class="kv-v" data-server-container-id>{{ server.container_id }}</span></div>
+                <div class="kv-row"><span class="kv-k">Data directory</span><span class="kv-v">{{ server.data_dir }}</span></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <p class="sec-label">Connection</p>
+            <div class="kv">
+                <div class="kv-row"><span class="kv-k">Address</span><span class="kv-v">127.0.0.1:{{ server.port }}</span></div>
+                <div class="kv-row"><span class="kv-k">Container</span><span class="kv-v">{{ server.container_name }}</span></div>
+                <div class="kv-row"><span class="kv-k">Type</span><span class="kv-v" data-server-type>{{ server.server_type }}</span></div>
+                <div class="kv-row"><span class="kv-k">RCON host</span><span class="kv-v" data-server-rcon-host>{{ server.rcon_host or "Disabled" }}</span></div>
+                <div class="kv-row"><span class="kv-k">RCON port</span><span class="kv-v" data-server-rcon-port>{{ server.rcon_port or "Disabled" }}</span></div>
+                <div class="kv-row"><span class="kv-k">RCON password</span><span class="kv-v" data-server-rcon-password>{{ server.rcon_password or "Unavailable" }}</span></div>
+            </div>
+        </div>
+
+        <div class="section" id="environment" data-environment-panel data-editing="{% if server_environment_error %}true{% else %}false{% endif %}">
+            <div class="env-head">
+                <p class="sec-label">Environment</p>
+                {% if environment_items %}
+                <button class="btn-solid" type="button" data-env-toggle>Quick edit</button>
+                {% endif %}
+            </div>
+            <div class="env-panel">
+            {% if environment_items %}
+            <form
+                class="env-form"
+                method="post"
+                action="{{ server_environment_action }}"
+                data-env-form
+                data-environment-url="{{ server_environment_url }}"
+            >
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="next" value="{{ server_environment_next }}">
+                <div class="kv" data-env-list>
+                    {% for key, value in environment_items %}
+                    <div class="kv-row">
+                        <span class="kv-k">{{ key }}</span>
+                        <div class="kv-v env-row-value">
+                            <span class="env-row-text">{{ value }}</span>
+                            <input
+                                class="env-input env-row-input"
+                                type="text"
+                                name="environment__{{ key }}"
+                                value="{{ value }}"
+                                spellcheck="false"
+                                data-env-input="{{ key }}"
+                            >
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <p class="editor-note" data-env-note hidden>
+                    Edit the saved container environment inline. Saving recreates the container{% if server.status == "running" %} and restarts it automatically{% endif %} so the changes take effect immediately.
+                </p>
+                <div class="env-actions" data-env-actions {% if not server_environment_error %}hidden{% endif %}>
+                    <button class="btn-solid" type="submit" data-env-save>Save changes</button>
+                    <button class="btn" type="button" data-env-cancel>Cancel</button>
+                </div>
+            </form>
+            <p
+                class="editor-status"
+                data-env-status
+                data-state="{% if server_environment_error %}error{% else %}success{% endif %}"
+                {% if not server_environment_saved and not server_environment_error %}hidden{% endif %}
+            >
+                {% if server_environment_error %}
+                {{ server_environment_error }}
+                {% elif server_environment_saved %}
+                Saved and applied.
+                {% endif %}
+            </p>
+            <p class="sec-empty" data-env-empty hidden>None stored.</p>
+            {% else %}
+            <form
+                class="env-form"
+                method="post"
+                action="{{ server_environment_action }}"
+                data-env-form
+                data-environment-url="{{ server_environment_url }}"
+                hidden
+            >
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="next" value="{{ server_environment_next }}">
+                <div class="kv" data-env-list hidden></div>
+                <p class="editor-note" data-env-note hidden>
+                    Edit the saved container environment inline. Saving recreates the container{% if server.status == "running" %} and restarts it automatically{% endif %} so the changes take effect immediately.
+                </p>
+                <div class="env-actions" data-env-actions hidden>
+                    <button class="btn-solid" type="submit" data-env-save>Save changes</button>
+                    <button class="btn" type="button" data-env-cancel>Cancel</button>
+                </div>
+            </form>
+            <p class="sec-empty" data-env-empty>None stored.</p>
+            {% endif %}
+            </div>
+        </div>
+
+        <div class="section" id="world-transfer">
+            <p class="sec-label">World</p>
+            <form
+                class="world-form"
+                method="post"
+                action="{{ server_world_import_action }}"
+                enctype="multipart/form-data"
+            >
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="next" value="{{ server_world_import_next }}">
+                <p class="editor-note">
+                    Download the current world as a zip, or import a world backup zip. Import replaces the existing world folder and requires the server to be stopped.
+                </p>
+                {% if server_world_imported %}
+                <p class="editor-status" data-state="success">Imported world archive.</p>
+                {% elif server_world_import_error %}
+                <p class="editor-status" data-state="error">{{ server_world_import_error }}</p>
+                {% endif %}
+                <div class="world-controls">
+                    <input
+                        class="world-file-input"
+                        type="file"
+                        name="archive"
+                        accept=".zip,application/zip"
+                        required
+                        {% if server.status == "running" %}disabled{% endif %}
+                    >
+                    <button class="btn-solid" type="submit" {% if server.status == "running" %}disabled{% endif %}>Import world</button>
+                    <a class="btn-solid" href="{{ server_world_download_url }}">Download zip</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="section" id="server-logs">
+            <p class="sec-label">Logs</p>
+            <div
+                class="logs-shell"
+                data-logs-url="{{ server_logs_url }}"
+                data-logs-stream-url="{{ server_logs_stream_url }}"
+                data-command-url="{{ server_command_url }}"
+                data-server-status="{{ server.status }}"
+            >
+                <div class="logs-head">
+                    <div class="logs-badges">
+                        <span class="logs-badge">{{ server.status }}</span>
+                        <span class="logs-badge" id="server-log-timestamp">
+                            {% if server_logs_modified_at %}
+                            {{ server_logs_modified_at }}
+                            {% else %}
+                            No log file
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="logs-screen" id="server-log-screen" aria-live="polite">
+                    <pre class="logs-pre" id="server-log-output">{% if server_logs_exists %}{{ server_logs_contents }}{% else %}Waiting for `/data/logs/latest.log`.{% endif %}</pre>
+                </div>
+
+                <div class="logs-footer">
+                    <form class="logs-command-form" id="server-log-command-form" autocomplete="off">
+                        <span class="logs-prompt">&gt;</span>
+                        <input
+                            class="logs-command-input"
+                            id="server-log-command-input"
+                            type="text"
+                            name="command"
+                            spellcheck="false"
+                            placeholder="{% if server.status == 'running' %}say Server admin online{% else %}Server must be running to send commands{% endif %}"
+                            {% if server.status != "running" %}disabled{% endif %}
+                        >
+                    </form>
+                    <div class="logs-status-row">
+                        <p class="logs-status" id="server-log-state">
+                            {% if server_logs_truncated %}
+                            Showing the newest portion of `latest.log`.
+                            {% elif server_logs_exists %}
+                            Watching `latest.log`.
+                            {% else %}
+                            Log output will appear here when the server writes `latest.log`.
+                            {% endif %}
+                        </p>
+                        <p class="logs-status" id="server-command-status">
+                            {% if server.status == "running" %}
+                            Press Enter to run a command.
+                            {% else %}
+                            Commands are unavailable while the server is stopped.
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section" id="data-files">
+            <p class="sec-label">Data files</p>
+            <p class="browser-note">Browsing `/data` from the container bind mount. Works when the server is running or stopped.</p>
+            {% if browser_error %}
+            <p class="browser-error">{{ browser_error }}</p>
+            {% endif %}
+            <div class="browser-grid">
+                <div class="browser-panel">
+                    <div class="browser-panel-head">
+                        <span class="browser-panel-title">Directory</span>
+                        <div class="breadcrumbs" aria-label="Breadcrumb">
+                            {% for crumb in browser_breadcrumbs %}
+                                {% if loop.last %}
+                                <span class="breadcrumb-current">{{ crumb.label }}</span>
+                                {% else %}
+                                <a class="breadcrumb-link" href="{{ crumb.href }}">{{ crumb.label }}</a>
+                                {% endif %}
+                                {% if not loop.last %}
+                                <span class="breadcrumb-sep">/</span>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="browser-list">
+                        {% if browser_parent_href %}
+                        <a class="browser-entry" href="{{ browser_parent_href }}">
+                            <div class="browser-entry-main">
+                                <span class="browser-entry-name">..</span>
+                                <span class="browser-badge is-dir">Up</span>
+                            </div>
+                            <div class="browser-entry-meta">
+                                <span>Parent directory</span>
+                            </div>
+                        </a>
+                        {% endif %}
+
+                        {% if browser_entries %}
+                            {% for entry in browser_entries %}
+                            <a class="browser-entry{% if entry.is_selected %} is-selected{% endif %}" href="{{ entry.href }}">
+                                <div class="browser-entry-main">
+                                    <span class="browser-entry-name">{{ entry.name }}</span>
+                                    <span class="browser-badge{% if entry.type == 'directory' %} is-dir{% endif %}">{{ entry.type }}</span>
+                                </div>
+                                <div class="browser-entry-meta">
+                                    <span>{{ entry.display_size }}</span>
+                                    <span>{{ entry.modified_at }}</span>
+                                </div>
+                            </a>
+                            {% endfor %}
+                        {% else %}
+                        <div class="browser-body">
+                            <p class="sec-empty">This directory is empty.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="browser-panel">
+                    <div class="browser-panel-head">
+                        <span class="browser-panel-title">Preview</span>
+                        {% if browser_download_href %}
+                        <a class="btn-solid" href="{{ browser_download_href }}">Download</a>
+                        {% endif %}
+                    </div>
+
+                    {% if browser_preview %}
+                    <div class="browser-body">
+                        <p class="browser-path">{{ browser_root_label }}/{{ browser_preview.relative_path }}</p>
+                        <div class="preview-meta">
+                            <div class="preview-meta-row">
+                                <span class="preview-meta-key">Name</span>
+                                <span class="preview-meta-value">{{ browser_preview.name }}</span>
+                            </div>
+                            <div class="preview-meta-row">
+                                <span class="preview-meta-key">Size</span>
+                                <span class="preview-meta-value">{{ browser_preview.display_size }}</span>
+                            </div>
+                            <div class="preview-meta-row">
+                                <span class="preview-meta-key">Modified</span>
+                                <span class="preview-meta-value">{{ browser_preview.modified_at }}</span>
+                            </div>
+                        </div>
+
+                        {% if browser_preview.is_text %}
+                        {% if browser_preview.truncated %}
+                        <p class="preview-note">Preview limited to the first 128 KiB.</p>
+                        {% endif %}
+                        <pre class="preview-pre">{{ browser_preview.contents }}</pre>
+                        {% else %}
+                        <p class="preview-note">Binary or unsupported file. Use download to inspect it locally.</p>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="browser-body">
+                        <p class="sec-empty">Select a file to preview it here.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <p class="sec-label">server.properties</p>
+            <form
+                class="editor-form server-properties-form"
+                method="post"
+                action="{{ server_properties_action }}"
+                data-server-id="{{ server.id }}"
+            >
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <p class="editor-note">
+                    Edit the raw `server.properties` file for this instance. Changes are saved to the instance data directory{% if server.status == "running" %}; restart the server if you need them to take effect immediately{% endif %}.
+                </p>
+                {% if server_properties_saved %}
+                <p class="editor-status" data-state="success">Saved.</p>
+                {% elif not server_properties_exists %}
+                <p class="editor-note">No file exists yet. Saving here will create one.</p>
+                {% endif %}
+                <textarea
+                    class="editor-textarea"
+                    name="contents"
+                    spellcheck="false"
+                    placeholder="motd=A Minecraft Server&#10;difficulty=easy&#10;pvp=true"
+                >{{ server_properties_contents }}</textarea>
+                <button class="btn-solid" type="submit">Save file</button>
+            </form>
+        </div>
+    </main>
+    <div class="confirm-shell" id="confirm-shell" aria-hidden="true">
+        <div class="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-copy">
+            <div class="confirm-head">
+                <span class="confirm-kicker">Critical action</span>
+                <button class="confirm-close" type="button" id="confirm-close" aria-label="Close">&times;</button>
+            </div>
+            <div class="confirm-body">
+                <h2 class="confirm-title" id="confirm-title">Delete server?</h2>
+                <p class="confirm-copy" id="confirm-copy">This action cannot be undone.</p>
+            </div>
+            <div class="confirm-actions">
+                <button class="btn-solid btn-solid-muted" type="button" id="confirm-cancel">Cancel</button>
+                <button class="btn-solid btn-solid-danger" type="button" id="confirm-submit">Delete server</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || "";
+
+        (() => {
+            const shell = document.getElementById("confirm-shell");
+            const title = document.getElementById("confirm-title");
+            const copy = document.getElementById("confirm-copy");
+            const submit = document.getElementById("confirm-submit");
+            const cancel = document.getElementById("confirm-cancel");
+            const close = document.getElementById("confirm-close");
+
+            if (!shell || !title || !copy || !submit || !cancel || !close) {
+                return;
+            }
+
+            let pendingForm = null;
+            let lastFocused = null;
+
+            const openConfirm = (form) => {
+                pendingForm = form;
+                lastFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                title.textContent = form.dataset.confirmTitle || "Confirm action";
+                copy.textContent = form.dataset.confirmMessage || "This action cannot be undone.";
+                submit.textContent = form.dataset.confirmSubmit || "Continue";
+                shell.classList.add("open");
+                shell.setAttribute("aria-hidden", "false");
+                document.body.style.overflow = "hidden";
+                submit.focus();
+            };
+
+            const closeConfirm = () => {
+                pendingForm = null;
+                shell.classList.remove("open");
+                shell.setAttribute("aria-hidden", "true");
+                document.body.style.overflow = "";
+                if (lastFocused) {
+                    lastFocused.focus();
+                }
+            };
+
+            document.querySelectorAll("form[data-confirm-form]").forEach((form) => {
+                form.addEventListener("submit", (event) => {
+                    event.preventDefault();
+                    openConfirm(form);
+                });
+            });
+
+            submit.addEventListener("click", () => {
+                if (!pendingForm) {
+                    return;
+                }
+                const form = pendingForm;
+                closeConfirm();
+                HTMLFormElement.prototype.submit.call(form);
+            });
+
+            cancel.addEventListener("click", closeConfirm);
+            close.addEventListener("click", closeConfirm);
+            shell.addEventListener("click", (event) => {
+                if (event.target === shell) {
+                    closeConfirm();
+                }
+            });
+            document.addEventListener("keydown", (event) => {
+                if (event.key === "Escape" && shell.classList.contains("open")) {
+                    closeConfirm();
+                }
+            });
+        })();
+
+    </script>
+
+    <script>
+        (() => {
+            const panel = document.querySelector("[data-environment-panel]");
+            if (!panel) {
+                return;
+            }
+
+            const list = panel.querySelector("[data-env-list]");
+            const empty = panel.querySelector("[data-env-empty]");
+            const form = panel.querySelector("[data-env-form]");
+            const note = panel.querySelector("[data-env-note]");
+            const actions = panel.querySelector("[data-env-actions]");
+            const toggle = panel.querySelector("[data-env-toggle]");
+            const cancel = panel.querySelector("[data-env-cancel]");
+            const status = panel.querySelector("[data-env-status]");
+
+            if (!list || !empty || !form || !note || !actions) {
+                return;
+            }
+
+            let pending = false;
+
+            const setText = (selector, value) => {
+                document.querySelectorAll(selector).forEach((node) => {
+                    node.textContent = value;
+                });
+            };
+
+            const setEditorOpen = (open) => {
+                panel.dataset.editing = open ? "true" : "false";
+                note.hidden = !open;
+                actions.hidden = !open;
+                if (toggle) {
+                    toggle.textContent = open ? "Close editor" : "Quick edit";
+                }
+            };
+
+            const setStatus = (message, state = "success") => {
+                if (!status) {
+                    return;
+                }
+                status.hidden = !message;
+                status.textContent = message;
+                status.dataset.state = state;
+            };
+
+            const setPendingState = (disabled) => {
+                pending = disabled;
+                form.querySelectorAll("input, button").forEach((element) => {
+                    if (element.getAttribute("type") === "hidden") {
+                        return;
+                    }
+                    element.disabled = disabled;
+                });
+            };
+
+            const sortedEntries = (environment) => Object.entries(environment || {}).sort(([left], [right]) => left.localeCompare(right));
+
+            const renderEnvironment = (environment) => {
+                const entries = sortedEntries(environment);
+                list.innerHTML = "";
+
+                const hasEntries = entries.length > 0;
+                form.hidden = !hasEntries;
+                list.hidden = !hasEntries;
+                empty.hidden = hasEntries;
+                if (toggle) {
+                    toggle.hidden = !hasEntries;
+                }
+
+                if (!hasEntries) {
+                    setEditorOpen(false);
+                    return;
+                }
+
+                for (const [key, value] of entries) {
+                    const row = document.createElement("div");
+                    row.className = "kv-row";
+
+                    const keyNode = document.createElement("span");
+                    keyNode.className = "kv-k";
+                    keyNode.textContent = key;
+
+                    const valueNode = document.createElement("div");
+                    valueNode.className = "kv-v env-row-value";
+
+                    const text = document.createElement("span");
+                    text.className = "env-row-text";
+                    text.textContent = value;
+
+                    const input = document.createElement("input");
+                    input.className = "env-input env-row-input";
+                    input.type = "text";
+                    input.name = `environment__${key}`;
+                    input.value = value;
+                    input.defaultValue = value;
+                    input.spellcheck = false;
+                    input.dataset.envInput = key;
+
+                    valueNode.append(text, input);
+                    row.append(keyNode, valueNode);
+                    list.appendChild(row);
+                }
+            };
+
+            const updateServerDetails = (server) => {
+                setText("[data-server-container-id]", server.container_id);
+                setText("[data-server-version]", server.version);
+                setText("[data-server-stop-duration]", `${server.stop_duration}s`);
+                setText("[data-server-type]", server.server_type);
+                setText("[data-server-rcon-host]", server.rcon_host || "Disabled");
+                setText("[data-server-rcon-port]", server.rcon_port || "Disabled");
+                setText("[data-server-rcon-password]", server.rcon_password || "Unavailable");
+            };
+
+            if (toggle) {
+                toggle.addEventListener("click", () => {
+                    if (pending) {
+                        return;
+                    }
+                    setEditorOpen(panel.dataset.editing !== "true");
+                });
+            }
+
+            if (cancel) {
+                cancel.addEventListener("click", () => {
+                    if (pending) {
+                        return;
+                    }
+                    form.reset();
+                    setEditorOpen(false);
+                });
+            }
+
+            form.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                if (pending) {
+                    return;
+                }
+
+                const environment = {};
+                list.querySelectorAll("[data-env-input]").forEach((input) => {
+                    environment[input.dataset.envInput] = input.value;
+                });
+
+                setPendingState(true);
+                setStatus("Applying changes...", "idle");
+
+                try {
+                    const response = await fetch(form.dataset.environmentUrl || form.action, {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Accept": "application/json",
+                            "X-CSRF-Token": CSRF_TOKEN
+                        },
+                        body: JSON.stringify({ environment })
+                    });
+                    const payload = await response.json().catch(() => ({}));
+
+                    if (!response.ok) {
+                        throw new Error(payload.detail || "Unable to update environment.");
+                    }
+
+                    renderEnvironment(payload.server.environment || {});
+                    updateServerDetails(payload.server);
+                    setStatus(
+                        payload.restarted
+                            ? "Saved. Container recreated and restarted."
+                            : "Saved. Container recreated.",
+                        "success"
+                    );
+                    setEditorOpen(false);
+                } catch (error) {
+                    setStatus(error.message || "Unable to update environment.", "error");
+                    setEditorOpen(true);
+                } finally {
+                    setPendingState(false);
+                }
+            });
+
+            setEditorOpen(panel.dataset.editing === "true");
+        })();
+
+        (() => {
+            const shell = document.querySelector(".logs-shell[data-logs-url][data-command-url]");
+            if (!shell) {
+                return;
+            }
+
+            const logsUrl = shell.dataset.logsUrl;
+            const logsStreamUrl = shell.dataset.logsStreamUrl;
+            const commandUrl = shell.dataset.commandUrl;
+            const screen = document.getElementById("server-log-screen");
+            const output = document.getElementById("server-log-output");
+            const timestamp = document.getElementById("server-log-timestamp");
+            const logState = document.getElementById("server-log-state");
+            const commandState = document.getElementById("server-command-status");
+            const form = document.getElementById("server-log-command-form");
+            const input = document.getElementById("server-log-command-input");
+
+            let commandPending = false;
+            let stream = null;
+
+            const isNearBottom = () => (screen.scrollHeight - screen.scrollTop - screen.clientHeight) < 28;
+
+            const scrollToBottom = () => {
+                screen.scrollTop = screen.scrollHeight;
+            };
+
+            const setCommandState = (message, state = "idle") => {
+                commandState.textContent = message;
+                commandState.dataset.state = state;
+            };
+
+            const renderLogSnapshot = (snapshot) => {
+                const stickToBottom = isNearBottom();
+                shell.dataset.serverStatus = snapshot.status;
+                output.textContent = snapshot.exists
+                    ? (snapshot.contents || "")
+                    : "Waiting for `/data/logs/latest.log`.";
+                timestamp.textContent = snapshot.modified_at || "No log file";
+                logState.textContent = snapshot.truncated
+                    ? "Showing the newest portion of `latest.log`."
+                    : (snapshot.exists
+                        ? "Watching `latest.log`."
+                        : "Log output will appear here when the server writes `latest.log`.");
+
+                const serverRunning = snapshot.status === "running";
+                input.disabled = commandPending || !serverRunning;
+                input.placeholder = serverRunning
+                    ? "say Server admin online"
+                    : "Server must be running to send commands";
+
+                if (stickToBottom) {
+                    scrollToBottom();
+                }
+            };
+
+            const loadLogs = async (quiet = false) => {
+                try {
+                    const response = await fetch(logsUrl, {
+                        headers: { "Accept": "application/json" }
+                    });
+                    if (!response.ok) {
+                        throw new Error("Unable to load logs.");
+                    }
+                    const snapshot = await response.json();
+                    renderLogSnapshot(snapshot);
+                } catch (error) {
+                    if (!quiet) {
+                        logState.textContent = "Unable to read `latest.log` right now.";
+                    }
+                }
+            };
+
+            const connectStream = () => {
+                if (!window.EventSource || !logsStreamUrl) {
+                    logState.textContent = "Live streaming is unavailable in this browser.";
+                    return;
+                }
+
+                if (stream) {
+                    stream.close();
+                }
+
+                stream = new EventSource(logsStreamUrl);
+
+                stream.onmessage = (event) => {
+                    try {
+                        const snapshot = JSON.parse(event.data);
+                        renderLogSnapshot(snapshot);
+                    } catch {
+                        logState.textContent = "Received an invalid log update.";
+                    }
+                };
+
+                stream.onerror = () => {
+                    logState.textContent = "Log stream disconnected. Reconnecting...";
+                };
+            };
+
+            form.addEventListener("submit", async (event) => {
+                event.preventDefault();
+
+                const command = input.value.trim();
+                if (!command || commandPending || input.disabled) {
+                    return;
+                }
+
+                commandPending = true;
+                input.disabled = true;
+                setCommandState("Sending command...", "idle");
+
+                try {
+                    const response = await fetch(commandUrl, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Accept": "application/json",
+                            "X-CSRF-Token": CSRF_TOKEN
+                        },
+                        body: JSON.stringify({ command })
+                    });
+
+                    if (!response.ok) {
+                        const payload = await response.json().catch(() => ({}));
+                        throw new Error(payload.detail || "Command failed.");
+                    }
+
+                    const payload = await response.json();
+                    input.value = "";
+                    setCommandState(payload.output || "Command sent.", "success");
+                } catch (error) {
+                    setCommandState(error.message || "Command failed.", "error");
+                } finally {
+                    commandPending = false;
+                    input.disabled = commandPending || shell.dataset.serverStatus !== "running";
+                    if (!input.disabled) {
+                        input.focus();
+                    }
+                }
+            });
+
+            loadLogs(true).then(() => {
+                scrollToBottom();
+                connectStream();
+            });
+
+            window.addEventListener("beforeunload", () => {
+                if (stream) {
+                    stream.close();
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

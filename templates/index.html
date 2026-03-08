@@ -1,0 +1,1068 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>MCM - home</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <style>
+        :root {
+            --bg: #0d0d0d;
+            --surface: #131313;
+            --line: #1c1c1c;
+            --text: #c8c8c8;
+            --muted: #444;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --mono: "Cascadia Code", "Consolas", ui-monospace, monospace;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Bahnschrift", system-ui, sans-serif;
+            color: var(--text);
+            background: var(--bg);
+            scrollbar-gutter: stable;
+        }
+
+        main {
+            width: min(1160px, calc(100% - 2rem));
+            margin: 0 auto;
+            padding: 1.75rem 0 4rem;
+        }
+
+        /* ── Header ── */
+        .hdr {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .hdr-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin: 0;
+        }
+
+        .hdr-counts {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.72rem;
+            color: var(--muted);
+            letter-spacing: 0.05em;
+        }
+
+        .hdr-counts b { color: var(--text); font-weight: 600; }
+
+        .hdr-actions {
+            display: flex;
+            align-items: baseline;
+            gap: 1.5rem;
+        }
+
+        .logout-form {
+            display: inline;
+        }
+
+        /* ── Table ── */
+        table { width: 100%; border-collapse: collapse; }
+
+        thead th {
+            padding: 0.65rem 0.75rem;
+            font: inherit;
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: var(--muted);
+            text-align: left;
+            border-bottom: 1px solid var(--line);
+        }
+
+        thead th:first-child { padding-left: 1.25rem; }
+        thead th:last-child { text-align: right; padding-right: 1.25rem; }
+
+        tbody tr { border-bottom: 1px solid var(--line); transition: background 80ms; cursor: pointer; }
+        tbody tr:hover { background: rgba(255,255,255,0.04); }
+
+        td {
+            padding: 0.8rem 0.75rem;
+            vertical-align: middle;
+        }
+
+        td:first-child { padding-left: 1.25rem; }
+        td:last-child { padding-right: 1.25rem; }
+
+        .td-name strong {
+            display: block;
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.15rem;
+        }
+
+        .td-name span {
+            font-size: 0.72rem;
+            color: var(--muted);
+            font-family: var(--mono);
+        }
+
+        .td-mono {
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            color: var(--text);
+        }
+
+        .td-muted {
+            font-size: 0.78rem;
+            color: var(--muted);
+        }
+
+        /* ── Status ── */
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.42rem;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .status::before {
+            content: "";
+            width: 5px;
+            height: 5px;
+            border-radius: 1px;
+            background: currentColor;
+            flex-shrink: 0;
+        }
+
+        .status-running { color: var(--success); }
+        .status-stopped { color: var(--danger); }
+
+        /* ── Row actions ── */
+        .row-actions {
+            display: flex;
+            gap: 0.6rem;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .row-actions form { display: contents; }
+
+        .btn {
+            appearance: none;
+            background: none;
+            border: 0;
+            padding: 0;
+            font: inherit;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--muted);
+            cursor: pointer;
+            text-decoration: none;
+            transition: color 100ms;
+            white-space: nowrap;
+        }
+
+        .btn:hover { color: var(--text); }
+        .btn:disabled { opacity: 0.25; cursor: not-allowed; }
+        .btn-open:hover { color: var(--text); }
+        .btn-stop:hover { color: var(--danger); }
+        .btn-delete:hover { color: var(--danger); }
+
+        .sep { color: var(--line); user-select: none; font-size: 0.7rem; }
+
+        /* ── Empty ── */
+        .empty {
+            padding: 5rem 0;
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.82rem;
+        }
+
+        /* ── Backdrop ── */
+        .backdrop {
+            position: fixed;
+            inset: 0;
+            background: transparent;
+            pointer-events: none;
+            transition: background 200ms;
+            z-index: 90;
+        }
+
+        .backdrop.open {
+            background: rgba(0,0,0,0.6);
+            pointer-events: all;
+        }
+
+        /* ── Drawer ── */
+        .drawer {
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 100dvh;
+            width: min(580px, 100vw);
+            background: var(--surface);
+            border-left: 1px solid var(--line);
+            transform: translateX(100%);
+            transition: transform 220ms cubic-bezier(.22,.68,0,1.12);
+            z-index: 100;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .drawer.open { transform: translateX(0); }
+
+        .drawer-bar {
+            position: sticky;
+            top: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.8rem 1.25rem;
+            background: var(--surface);
+            border-bottom: 1px solid var(--line);
+            z-index: 1;
+            flex-shrink: 0;
+        }
+
+        .drawer-bar-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .drawer-x {
+            appearance: none;
+            background: none;
+            border: 0;
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 1.1rem;
+            line-height: 1;
+            padding: 0.1rem 0.2rem;
+            transition: color 100ms;
+        }
+
+        .drawer-x:hover { color: var(--text); }
+
+        .drawer-inner { flex: 1; padding: 1.5rem; }
+
+        .drawer-loading {
+            padding: 3rem 0;
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+
+        .confirm-shell {
+            position: fixed;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            padding: 1rem;
+            background:
+                radial-gradient(circle at top, rgba(239, 68, 68, 0.12), transparent 28rem),
+                rgba(0, 0, 0, 0.78);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 150ms ease;
+            z-index: 120;
+        }
+
+        .confirm-shell.open {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .confirm-card {
+            width: min(440px, 100%);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 35%),
+                var(--surface);
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+            transform: translateY(10px) scale(0.985);
+            transition: transform 180ms cubic-bezier(.22,.68,0,1.12);
+        }
+
+        .confirm-shell.open .confirm-card {
+            transform: translateY(0) scale(1);
+        }
+
+        .confirm-head,
+        .confirm-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.9rem 1rem;
+        }
+
+        .confirm-head {
+            border-bottom: 1px solid var(--line);
+        }
+
+        .confirm-kicker {
+            font-size: 0.64rem;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--danger);
+        }
+
+        .confirm-close {
+            appearance: none;
+            background: none;
+            border: 0;
+            color: var(--muted);
+            cursor: pointer;
+            font: inherit;
+            font-size: 1.1rem;
+            line-height: 1;
+            padding: 0.1rem 0.2rem;
+            transition: color 100ms;
+        }
+
+        .confirm-close:hover { color: var(--text); }
+
+        .confirm-body {
+            padding: 1rem;
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .confirm-title {
+            margin: 0;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .confirm-copy {
+            margin: 0;
+            color: #9a9a9a;
+            font-size: 0.8rem;
+            line-height: 1.7;
+        }
+
+        .confirm-actions {
+            border-top: 1px solid var(--line);
+            justify-content: flex-end;
+        }
+
+        .btn-solid {
+            appearance: none;
+            border: 1px solid var(--line);
+            background: #f3f3f3;
+            color: #0d0d0d;
+            font: inherit;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 0.72rem 0.9rem;
+            cursor: pointer;
+            transition: transform 100ms ease, opacity 100ms ease, background 100ms ease, border-color 100ms ease;
+            text-decoration: none;
+        }
+
+        .btn-solid:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-solid-danger {
+            background: linear-gradient(180deg, #ff7b7b, #ef4444);
+            border-color: rgba(239, 68, 68, 0.45);
+            color: #210909;
+        }
+
+        .btn-solid-muted {
+            background: #181818;
+            border-color: #252525;
+            color: var(--text);
+        }
+
+        /* ── Create form ── */
+        .create-form { display: grid; gap: 1rem; }
+
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+        .form-row.wide { grid-template-columns: 1fr; }
+
+        .field { display: grid; gap: 0.35rem; }
+
+        .field label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .field input, .field select {
+            appearance: none;
+            width: 100%;
+            background: #0d0d0d;
+            border: 1px solid var(--line);
+            border-radius: 3px;
+            padding: 0.55rem 0.7rem;
+            color: var(--text);
+            font: inherit;
+            font-size: 0.82rem;
+            font-family: var(--mono);
+            transition: border-color 100ms;
+        }
+
+        .field input:focus, .field select:focus {
+            outline: none;
+            border-color: #383838;
+        }
+
+        .field input.invalid, .field select.invalid,
+        .form-consent.invalid {
+            border-color: var(--danger);
+        }
+
+        .form-consent.invalid {
+            background: rgba(239, 68, 68, 0.08);
+        }
+
+        .field select option { background: #1a1a1a; }
+
+        .form-submit {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            padding-top: 0.25rem;
+        }
+
+        .form-consent {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.85rem 0.9rem;
+            border: 1px solid var(--line);
+            border-radius: 3px;
+            background: #101010;
+        }
+
+        .form-consent input {
+            width: 1rem;
+            height: 1rem;
+            margin: 0.15rem 0 0;
+            accent-color: #d4d4d4;
+            flex-shrink: 0;
+        }
+
+        .form-consent-copy {
+            display: grid;
+            gap: 0.25rem;
+        }
+
+        .form-consent-copy label {
+            font-size: 0.76rem;
+            color: var(--text);
+            line-height: 1.4;
+            cursor: pointer;
+        }
+
+        .form-consent-copy a {
+            color: var(--text);
+            text-decoration-thickness: 1px;
+            text-underline-offset: 0.16em;
+        }
+
+        .form-consent-copy p {
+            margin: 0;
+            font-size: 0.72rem;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .btn-submit {
+            appearance: none;
+            border: 1px solid #383838;
+            border-radius: 3px;
+            padding: 0.5rem 1.1rem;
+            font: inherit;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text);
+            background: #1c1c1c;
+            cursor: pointer;
+            transition: background 100ms, border-color 100ms;
+        }
+
+        .btn-submit:hover { background: #242424; border-color: #484848; }
+        .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .form-error {
+            display: none;
+            font-size: 0.75rem;
+            color: var(--danger);
+            font-family: var(--mono);
+        }
+
+        .form-error.visible { display: block; }
+
+        /* ── New button ── */
+        .btn-new {
+            appearance: none;
+            background: none;
+            border: 0;
+            padding: 0;
+            font: inherit;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            cursor: pointer;
+            transition: color 100ms;
+        }
+
+        .btn-new:hover { color: var(--text); }
+
+        @media (max-width: 700px) {
+        .drawer-inner main { width: 100%; padding: 0; margin: 0; }
+        .drawer-inner .back-link { display: none; }
+        .drawer-inner a { color: inherit; text-decoration: none; }
+
+        .drawer-inner .srv-hdr {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            padding-bottom: 1.25rem;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .drawer-inner .srv-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text);
+            margin: 0 0 0.3rem;
+            line-height: 1;
+        }
+
+        .drawer-inner .srv-sub {
+            font-size: 0.72rem;
+            color: var(--muted);
+            font-family: var(--mono);
+        }
+
+        .drawer-inner .actions {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            padding: 0.85rem 0;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .drawer-inner .actions form { display: contents; }
+
+        .drawer-inner .section { padding: 1rem 0; }
+        .drawer-inner .section + .section { border-top: 1px solid var(--line); }
+
+        .drawer-inner .sec-label {
+            font-size: 0.63rem;
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin: 0 0 0.65rem;
+        }
+
+        .drawer-inner .kv { display: grid; }
+
+        .drawer-inner .kv-row {
+            display: grid;
+            grid-template-columns: 9rem 1fr;
+            gap: 1rem;
+            padding: 0.35rem 0;
+            align-items: baseline;
+        }
+
+        .drawer-inner .kv-k {
+            font-size: 0.75rem;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        .drawer-inner .kv-v {
+            font-size: 0.8rem;
+            font-family: var(--mono);
+            color: var(--text);
+            overflow-wrap: anywhere;
+        }
+
+        .drawer-inner .sec-empty {
+            font-size: 0.78rem;
+            color: var(--muted);
+            font-family: var(--mono);
+            margin: 0;
+        }
+
+        .drawer-inner .editor-form {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .drawer-inner .editor-note {
+            margin: 0;
+            font-size: 0.76rem;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .drawer-inner .editor-status {
+            margin: 0;
+            font-size: 0.74rem;
+            font-family: var(--mono);
+            color: var(--success);
+        }
+
+        .drawer-inner .editor-status[data-state="error"] {
+            color: var(--danger);
+        }
+
+        .drawer-inner .editor-textarea {
+            width: 100%;
+            min-height: 18rem;
+            resize: vertical;
+            background: #0d0d0d;
+            border: 1px solid var(--line);
+            border-radius: 3px;
+            padding: 0.85rem 0.9rem;
+            color: var(--text);
+            font: inherit;
+            font-size: 0.8rem;
+            font-family: var(--mono);
+            line-height: 1.5;
+        }
+
+        .drawer-inner .editor-textarea:focus {
+            outline: none;
+            border-color: #383838;
+        }
+
+        .drawer-inner .btn-solid {
+            appearance: none;
+            width: fit-content;
+            border: 1px solid #383838;
+            border-radius: 3px;
+            padding: 0.55rem 1rem;
+            background: #1c1c1c;
+            color: var(--text);
+            font: inherit;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background 100ms, border-color 100ms;
+        }
+
+        .drawer-inner .btn-solid:hover {
+            background: #242424;
+            border-color: #484848;
+        }
+
+        .drawer-inner .btn-solid:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        }
+
+        @media (max-width: 700px) {
+            th:nth-child(3), td:nth-child(3),
+            th:nth-child(5), td:nth-child(5) { display: none; }
+            .form-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <div class="hdr">
+            <h1 class="hdr-title">Servers</h1>
+            <div class="hdr-actions">
+                <div class="hdr-counts">
+                    <span><b>{{ server_count }}</b> total</span>
+                    <span><b>{{ running_count }}</b> running</span>
+                    <span><b>{{ stopped_count }}</b> stopped</span>
+                </div>
+                <form class="logout-form" method="post" action="/logout">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button class="btn" type="submit">Logout</button>
+                </form>
+                <button class="btn-new" id="new-btn">+ New</button>
+            </div>
+        </div>
+
+        {% if servers %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Version</th>
+                    <th>Port</th>
+                    <th>Created</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for server in servers %}
+                <tr onclick="navigate(event, '/servers/{{ server.id }}/view')">
+                    <td class="td-name">
+                        <strong>{{ server.name }}</strong>
+                        <span>{{ server.server_type }} &middot; {{ server.container_name }}</span>
+                    </td>
+                    <td><span class="status status-{{ server.status }}">{{ server.status }}</span></td>
+                    <td class="td-mono">{{ server.version }}</td>
+                    <td class="td-mono">{{ server.port }}</td>
+                    <td class="td-muted">{{ server.created_at }}</td>
+                    <td>
+                        <div class="row-actions">
+                            <form method="post" action="/servers/{{ server.id }}/start/view?next=/">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <button class="btn" type="submit"
+                                    {% if server.status == "running" %}disabled{% endif %}>Start</button>
+                            </form>
+                            <span class="sep">/</span>
+                            <form method="post" action="/servers/{{ server.id }}/stop/view?next=/">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <button class="btn btn-stop" type="submit"
+                                    {% if server.status == "stopped" %}disabled{% endif %}>Stop</button>
+                            </form>
+                            <span class="sep">/</span>
+                            <form method="post"
+                                  action="/servers/{{ server.id }}/delete/view?next=/"
+                                  data-confirm-form
+                                  data-confirm-title="Delete {{ server.name }}?"
+                                  data-confirm-message="This removes the container, database record, and all files in {{ server.data_dir }}."
+                                  data-confirm-submit="Delete server">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <button class="btn btn-delete" type="submit">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty">No servers yet.</div>
+        {% endif %}
+    </main>
+
+    <script type="application/json" id="page-data">
+        {"server_types": {{ server_type_options | tojson }}, "default_port": {{ default_port }}, "default_stop": {{ default_stop_duration }}}
+    </script>
+    <script>
+        const _d = JSON.parse(document.getElementById('page-data').textContent);
+        const SERVER_TYPES = _d.server_types;
+        const DEFAULT_PORT = _d.default_port;
+        const DEFAULT_STOP = _d.default_stop;
+        const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    </script>
+
+    <div class="backdrop" id="backdrop"></div>
+    <aside class="drawer" id="drawer" aria-hidden="true">
+        <div class="drawer-bar">
+            <span class="drawer-bar-label" id="drawer-label">New Server</span>
+            <button class="drawer-x" id="drawer-x" aria-label="Close">&times;</button>
+        </div>
+        <div class="drawer-inner" id="drawer-inner">
+            <div class="drawer-loading">Loading&hellip;</div>
+        </div>
+    </aside>
+    <div class="confirm-shell" id="confirm-shell" aria-hidden="true">
+        <div class="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-copy">
+            <div class="confirm-head">
+                <span class="confirm-kicker">Critical action</span>
+                <button class="confirm-close" type="button" id="confirm-close" aria-label="Close">&times;</button>
+            </div>
+            <div class="confirm-body">
+                <h2 class="confirm-title" id="confirm-title">Delete server?</h2>
+                <p class="confirm-copy" id="confirm-copy">This action cannot be undone.</p>
+            </div>
+            <div class="confirm-actions">
+                <button class="btn-solid btn-solid-muted" type="button" id="confirm-cancel">Cancel</button>
+                <button class="btn-solid btn-solid-danger" type="button" id="confirm-submit">Delete server</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function navigate(e, url) {
+            if (e.target.closest('button, a, form')) return;
+            window.location.href = url;
+        }
+
+        const drawer   = document.getElementById('drawer');
+        const backdrop = document.getElementById('backdrop');
+        const inner    = document.getElementById('drawer-inner');
+        const label    = document.getElementById('drawer-label');
+
+        const open = () => {
+            drawer.classList.add('open');
+            backdrop.classList.add('open');
+            drawer.setAttribute('aria-hidden', 'false');
+        };
+
+        const close = () => {
+            drawer.classList.remove('open');
+            backdrop.classList.remove('open');
+            drawer.setAttribute('aria-hidden', 'true');
+        };
+
+        document.getElementById('drawer-x').addEventListener('click', close);
+        backdrop.addEventListener('click', close);
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+        /* ── Create drawer ── */
+        document.getElementById('new-btn').addEventListener('click', () => {
+            label.textContent = 'New Server';
+            inner.innerHTML = `
+                <form class="create-form" id="create-form" novalidate>
+                    <div class="form-row wide">
+                        <div class="field">
+                            <label for="cf-name">Name</label>
+                            <input id="cf-name" name="name" type="text" placeholder="Survival Realm" required autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="field">
+                            <label for="cf-port">Port</label>
+                            <input id="cf-port" name="port" type="number" value="${DEFAULT_PORT}" min="1" max="65535" required>
+                        </div>
+                        <div class="field">
+                            <label for="cf-version">Version</label>
+                            <input id="cf-version" name="version" type="text" value="LATEST" required autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="field">
+                            <label for="cf-type">Type</label>
+                            <select id="cf-type" name="type">
+                                ${SERVER_TYPES.map(t => `<option value="${t}">${t}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="cf-status">Start</label>
+                            <select id="cf-status" name="status">
+                                <option value="running">Running</option>
+                                <option value="stopped">Stopped</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row wide">
+                        <div class="field">
+                            <label for="cf-stop">Stop duration (s)</label>
+                            <input id="cf-stop" name="stop_duration" type="number" value="${DEFAULT_STOP}" min="15" max="600">
+                        </div>
+                    </div>
+                    <div class="form-row wide">
+                        <div class="form-consent">
+                            <input id="cf-eula" name="eula" type="checkbox" required>
+                            <div class="form-consent-copy">
+                                <label for="cf-eula">Accept the Minecraft EULA</label>
+                                <p>Review the latest official EULA before creating the server: <a href="https://www.minecraft.net/en-us/eula" target="_blank" rel="noreferrer">minecraft.net/en-us/eula</a></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-submit">
+                        <button class="btn-submit" type="submit" id="create-submit">Create server</button>
+                        <span class="form-error" id="create-error"></span>
+                    </div>
+                </form>`;
+            open();
+            drawer.scrollTop = 0;
+
+            const createForm = document.getElementById('create-form');
+            const submit = document.getElementById('create-submit');
+            const errEl = document.getElementById('create-error');
+            const eulaField = document.querySelector('.form-consent');
+
+            const resetCreateValidation = () => {
+                errEl.textContent = '';
+                errEl.classList.remove('visible');
+                createForm.querySelectorAll('.invalid').forEach(el => el.classList.remove('invalid'));
+            };
+
+            const validateCreateForm = () => {
+                resetCreateValidation();
+
+                const missingRequiredField = Array.from(
+                    createForm.querySelectorAll('input[required]:not([type="checkbox"]), select[required], textarea[required]')
+                ).some(field => !field.value.trim());
+                const invalidField = Array.from(createForm.elements).find(
+                    field => typeof field.checkValidity === 'function' && !field.checkValidity()
+                );
+                const eulaAccepted = document.getElementById('cf-eula').checked;
+                const messages = [];
+
+                Array.from(createForm.elements).forEach(field => {
+                    if (typeof field.checkValidity !== 'function' || field.checkValidity()) return;
+                    if (field.type === 'checkbox') {
+                        eulaField.classList.add('invalid');
+                        return;
+                    }
+                    field.classList.add('invalid');
+                });
+
+                if (missingRequiredField || (invalidField && invalidField.name !== 'eula')) {
+                    messages.push('Fill in all required fields before creating a server.');
+                }
+
+                if (!eulaAccepted) {
+                    messages.push('Accept the Minecraft EULA before creating a server.');
+                }
+
+                if (!messages.length) return true;
+
+                errEl.textContent = messages.join(' ');
+                errEl.classList.add('visible');
+                return false;
+            };
+
+            createForm.addEventListener('input', resetCreateValidation);
+            createForm.addEventListener('change', resetCreateValidation);
+
+            createForm.addEventListener('submit', async e => {
+                e.preventDefault();
+                if (!validateCreateForm()) return;
+                submit.disabled = true;
+                submit.textContent = 'Creating…';
+
+                const fd = new FormData(e.target);
+                const body = {
+                    name:          fd.get('name'),
+                    port:          parseInt(fd.get('port'), 10),
+                    version:       fd.get('version'),
+                    type:          fd.get('type'),
+                    status:        fd.get('status'),
+                    stop_duration: parseInt(fd.get('stop_duration'), 10),
+                    eula:          fd.get('eula') === 'on',
+                };
+
+                try {
+                    const res = await fetch('/servers', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': CSRF_TOKEN,
+                        },
+                        body: JSON.stringify(body),
+                    });
+                    if (res.ok) {
+                        window.location.reload();
+                    } else {
+                        const data = await res.json().catch(() => ({}));
+                        const msg = data.detail || `Error ${res.status}`;
+                        errEl.textContent = typeof msg === 'string' ? msg : JSON.stringify(msg);
+                        errEl.classList.add('visible');
+                        submit.disabled = false;
+                        submit.textContent = 'Create server';
+                    }
+                } catch (err) {
+                    errEl.textContent = 'Network error.';
+                    errEl.classList.add('visible');
+                    submit.disabled = false;
+                    submit.textContent = 'Create server';
+                }
+            });
+        });
+    </script>
+    <script>
+        (() => {
+            const shell = document.getElementById('confirm-shell');
+            const title = document.getElementById('confirm-title');
+            const copy = document.getElementById('confirm-copy');
+            const submit = document.getElementById('confirm-submit');
+            const cancel = document.getElementById('confirm-cancel');
+            const close = document.getElementById('confirm-close');
+
+            if (!shell || !title || !copy || !submit || !cancel || !close) {
+                return;
+            }
+
+            let pendingForm = null;
+            let lastFocused = null;
+
+            const openConfirm = (form) => {
+                pendingForm = form;
+                lastFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                title.textContent = form.dataset.confirmTitle || 'Confirm action';
+                copy.textContent = form.dataset.confirmMessage || 'This action cannot be undone.';
+                submit.textContent = form.dataset.confirmSubmit || 'Continue';
+                shell.classList.add('open');
+                shell.setAttribute('aria-hidden', 'false');
+                document.body.style.overflow = 'hidden';
+                submit.focus();
+            };
+
+            const closeConfirm = () => {
+                pendingForm = null;
+                shell.classList.remove('open');
+                shell.setAttribute('aria-hidden', 'true');
+                document.body.style.overflow = '';
+                if (lastFocused) {
+                    lastFocused.focus();
+                }
+            };
+
+            document.querySelectorAll('form[data-confirm-form]').forEach((form) => {
+                form.addEventListener('submit', (event) => {
+                    event.preventDefault();
+                    openConfirm(form);
+                });
+            });
+
+            submit.addEventListener('click', () => {
+                if (!pendingForm) {
+                    return;
+                }
+                const form = pendingForm;
+                closeConfirm();
+                HTMLFormElement.prototype.submit.call(form);
+            });
+
+            cancel.addEventListener('click', closeConfirm);
+            close.addEventListener('click', closeConfirm);
+            shell.addEventListener('click', (event) => {
+                if (event.target === shell) {
+                    closeConfirm();
+                }
+            });
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && shell.classList.contains('open')) {
+                    closeConfirm();
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS servers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    port INTEGER NOT NULL UNIQUE,
+    status TEXT NOT NULL CHECK (status IN ('running', 'stopped')),
+    container_id TEXT NOT NULL UNIQUE,
+    container_name TEXT NOT NULL,
+    image TEXT NOT NULL,
+    version TEXT NOT NULL,
+    server_type TEXT NOT NULL,
+    data_dir TEXT NOT NULL,
+    stop_duration INTEGER NOT NULL,
+    rcon_host TEXT,
+    rcon_port INTEGER,
+    rcon_password TEXT,
+    port_bindings TEXT NOT NULL,
+    volume_bindings TEXT NOT NULL,
+    environment TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

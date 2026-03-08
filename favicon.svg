@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
+  <rect width="16" height="16" fill="#2D2018"/>
+  <rect x="1" y="1" width="14" height="4" fill="#6AA843"/>
+  <rect x="1" y="5" width="14" height="1" fill="#557A27"/>
+  <rect x="1" y="6" width="14" height="9" fill="#855126"/>
+
+  <rect x="2" y="1" width="3" height="1" fill="#96D55F"/>
+  <rect x="8" y="1" width="4" height="1" fill="#8ACE57"/>
+  <rect x="5" y="2" width="4" height="1" fill="#5A9636"/>
+  <rect x="11" y="2" width="2" height="1" fill="#9ADD62"/>
+  <rect x="3" y="3" width="2" height="1" fill="#89C955"/>
+  <rect x="9" y="3" width="3" height="1" fill="#4D862E"/>
+  <rect x="6" y="4" width="4" height="1" fill="#78BC4C"/>
+
+  <rect x="3" y="5" width="2" height="1" fill="#8F582A"/>
+  <rect x="7" y="5" width="1" height="1" fill="#70421E"/>
+  <rect x="10" y="5" width="3" height="1" fill="#976131"/>
+  <rect x="2" y="6" width="1" height="1" fill="#76B84B"/>
+  <rect x="12" y="6" width="1" height="1" fill="#6DAE43"/>
+
+  <rect x="2" y="7" width="3" height="2" fill="#A46C39"/>
+  <rect x="6" y="7" width="2" height="1" fill="#6E421F"/>
+  <rect x="10" y="7" width="2" height="2" fill="#9A6432"/>
+  <rect x="13" y="7" width="1" height="1" fill="#6A3F1D"/>
+  <rect x="5" y="8" width="2" height="2" fill="#8E592C"/>
+  <rect x="8" y="8" width="1" height="1" fill="#B07741"/>
+  <rect x="12" y="9" width="2" height="2" fill="#A86F3B"/>
+  <rect x="2" y="10" width="2" height="1" fill="#714321"/>
+  <rect x="7" y="10" width="3" height="2" fill="#9B6534"/>
+  <rect x="4" y="11" width="2" height="2" fill="#AE7844"/>
+  <rect x="11" y="11" width="1" height="2" fill="#673D1C"/>
+  <rect x="2" y="12" width="1" height="1" fill="#A66C38"/>
+  <rect x="9" y="12" width="1" height="1" fill="#6F4320"/>
+  <rect x="13" y="12" width="1" height="2" fill="#8E592B"/>
+  <rect x="6" y="13" width="3" height="1" fill="#794824"/>
+  <rect x="3" y="14" width="2" height="1" fill="#A66F3C"/>
+  <rect x="10" y="14" width="2" height="1" fill="#B37B47"/>
+</svg>
