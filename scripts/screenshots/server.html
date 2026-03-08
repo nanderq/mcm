@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCM - Survival Realm</title>
+    <style>
+        :root {
+            --bg: #0d0d0d;
+            --surface: #131313;
+            --line: #1c1c1c;
+            --text: #c8c8c8;
+            --muted: #444;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --mono: "Cascadia Code", "Consolas", ui-monospace, monospace;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Bahnschrift", system-ui, sans-serif;
+            color: var(--text);
+            background: var(--bg);
+        }
+
+        a { color: inherit; text-decoration: none; }
+
+        main {
+            width: min(1040px, calc(100% - 2rem));
+            margin: 0 auto;
+            padding: 1.75rem 0 4rem;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 1.75rem;
+        }
+
+        .srv-hdr {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .srv-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text);
+            margin: 0 0 0.3rem;
+            line-height: 1;
+        }
+
+        .srv-sub {
+            font-size: 0.72rem;
+            color: var(--muted);
+            font-family: var(--mono);
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.42rem;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            flex-shrink: 0;
+            margin-top: 0.4rem;
+        }
+
+        .status::before {
+            content: "";
+            width: 5px;
+            height: 5px;
+            border-radius: 1px;
+            background: currentColor;
+            flex-shrink: 0;
+        }
+
+        .status-running { color: var(--success); }
+        .status-stopped { color: var(--danger); }
+
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .btn {
+            appearance: none;
+            background: none;
+            border: 0;
+            padding: 0;
+            font: inherit;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            cursor: pointer;
+        }
+
+        .btn:disabled { opacity: 0.25; cursor: not-allowed; }
+        .sep { color: var(--line); user-select: none; }
+
+        .section { padding: 1.1rem 0; }
+        .section + .section { border-top: 1px solid var(--line); }
+
+        .sec-label {
+            font-size: 0.63rem;
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin: 0 0 0.75rem;
+        }
+
+        .kv { display: grid; }
+
+        .kv-row {
+            display: grid;
+            grid-template-columns: 10rem 1fr;
+            gap: 1rem;
+            padding: 0.38rem 0;
+            align-items: baseline;
+        }
+
+        .kv-k {
+            font-size: 0.78rem;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        .kv-v {
+            font-size: 0.8rem;
+            font-family: var(--mono);
+            color: var(--text);
+            overflow-wrap: anywhere;
+        }
+
+        .env-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.9rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .env-head .sec-label { margin-bottom: 0; }
+
+        .btn-solid {
+            appearance: none;
+            width: fit-content;
+            border: 1px solid #383838;
+            border-radius: 3px;
+            padding: 0.55rem 1rem;
+            background: #1c1c1c;
+            color: var(--text);
+            font: inherit;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        .logs-shell {
+            display: grid;
+            gap: 0;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+                #101010;
+            overflow: hidden;
+        }
+
+        .logs-head {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.5rem;
+            padding: 0.55rem 0.8rem;
+            border-bottom: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.015);
+        }
+
+        .logs-badges { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+
+        .logs-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.24rem 0.48rem;
+            border: 1px solid #2d2d2d;
+            border-radius: 999px;
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-family: var(--mono);
+            white-space: nowrap;
+        }
+
+        .logs-screen {
+            max-height: 22rem;
+            overflow: auto;
+            padding: 1rem;
+            background:
+                radial-gradient(circle at top, rgba(34, 197, 94, 0.05), transparent 28%),
+                #0a0a0a;
+        }
+
+        .logs-pre {
+            margin: 0;
+            min-height: 14rem;
+            color: #d7d7d7;
+            font-size: 0.78rem;
+            font-family: var(--mono);
+            line-height: 1.55;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .logs-footer { border-top: 1px solid var(--line); background: #0a0a0a; }
+
+        .logs-command-form {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.9rem 1rem;
+        }
+
+        .logs-prompt {
+            flex-shrink: 0;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text);
+            font-family: var(--mono);
+        }
+
+        .logs-command-input {
+            width: 100%;
+            appearance: none;
+            background: transparent;
+            border: 0;
+            color: var(--text);
+            padding: 0;
+            font: inherit;
+            font-size: 0.8rem;
+            font-family: var(--mono);
+        }
+
+        .logs-command-input::placeholder { color: #565656; }
+        .logs-command-input:focus { outline: none; }
+
+        .logs-status-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0 1rem 0.9rem;
+            background: #0a0a0a;
+        }
+
+        .logs-status {
+            margin: 0;
+            font-size: 0.7rem;
+            color: var(--muted);
+            font-family: var(--mono);
+        }
+
+        .browser-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+            gap: 1rem;
+        }
+
+        .browser-panel {
+            min-width: 0;
+            border: 1px solid var(--line);
+            border-radius: 3px;
+            background: var(--surface);
+            overflow: hidden;
+        }
+
+        .browser-panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.8rem 0.95rem;
+            border-bottom: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .browser-panel-title {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .breadcrumbs {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.76rem;
+            font-family: var(--mono);
+        }
+
+        .breadcrumb-link { color: var(--muted); }
+        .breadcrumb-current { color: var(--text); }
+        .breadcrumb-sep { color: var(--line); }
+
+        .browser-list { display: grid; }
+
+        .browser-entry {
+            display: grid;
+            gap: 0.4rem;
+            padding: 0.8rem 0.95rem;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .browser-entry:last-child { border-bottom: 0; }
+
+        .browser-entry-main {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.8rem;
+        }
+
+        .browser-entry-name {
+            font-size: 0.8rem;
+            font-family: var(--mono);
+            color: var(--text);
+        }
+
+        .browser-entry-meta {
+            display: flex;
+            gap: 0.5rem 0.75rem;
+            font-size: 0.7rem;
+            color: var(--muted);
+            font-family: var(--mono);
+        }
+
+        .browser-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 4rem;
+            padding: 0.22rem 0.45rem;
+            border: 1px solid #2b2b2b;
+            border-radius: 999px;
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+            flex-shrink: 0;
+        }
+
+        .browser-badge.is-dir { color: #a3a3a3; border-color: #353535; }
+
+        .browser-body { padding: 0.95rem; display: grid; gap: 0.9rem; }
+
+        .sec-empty {
+            font-size: 0.78rem;
+            color: var(--muted);
+            font-family: var(--mono);
+            margin: 0;
+        }
+
+        .browser-path {
+            margin: 0;
+            font-size: 0.78rem;
+            color: var(--text);
+            font-family: var(--mono);
+        }
+
+        .preview-meta { display: grid; gap: 0.45rem; }
+
+        .preview-meta-row {
+            display: grid;
+            grid-template-columns: 7rem 1fr;
+            gap: 0.9rem;
+            align-items: baseline;
+        }
+
+        .preview-meta-key {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .preview-meta-value {
+            font-size: 0.76rem;
+            color: var(--text);
+            font-family: var(--mono);
+        }
+
+        .preview-pre {
+            margin: 0;
+            max-height: 16rem;
+            overflow: auto;
+            padding: 0.9rem;
+            border: 1px solid var(--line);
+            border-radius: 3px;
+            background: #0d0d0d;
+            color: var(--text);
+            font-size: 0.78rem;
+            font-family: var(--mono);
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .browser-entry.is-selected { background: rgba(255,255,255,0.04); }
+
+        .editor-textarea {
+            width: 100%;
+            min-height: 10rem;
+            resize: vertical;
+            background: #0d0d0d;
+            border: 1px solid var(--line);
+            color: var(--text);
+            border-radius: 3px;
+            padding: 0.85rem 0.9rem;
+            font: inherit;
+            font-size: 0.8rem;
+            font-family: var(--mono);
+            line-height: 1.5;
+        }
+
+        .editor-textarea:focus { outline: none; border-color: #383838; }
+
+        .editor-form { display: grid; gap: 0.75rem; }
+
+        .editor-note {
+            margin: 0;
+            font-size: 0.76rem;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <a class="back-link" href="/">&#8592; All servers</a>
+
+        <div class="srv-hdr">
+            <div>
+                <h1 class="srv-name">Survival Realm</h1>
+                <div class="srv-sub">VANILLA &middot; 25565 &middot; mcm-survival-realm</div>
+            </div>
+            <span class="status status-running">running</span>
+        </div>
+
+        <div class="actions">
+            <button class="btn" disabled>Start</button>
+            <span class="sep">/</span>
+            <button class="btn">Stop</button>
+            <span class="sep">/</span>
+            <button class="btn">Delete</button>
+        </div>
+
+        <div class="section">
+            <div class="kv">
+                <div class="kv-row"><span class="kv-k">Image</span><span class="kv-v">itzg/minecraft-server</span></div>
+                <div class="kv-row"><span class="kv-k">Version</span><span class="kv-v">1.21.4</span></div>
+                <div class="kv-row"><span class="kv-k">Created</span><span class="kv-v">2 Jan 2026, 14:22</span></div>
+                <div class="kv-row"><span class="kv-k">Stop duration</span><span class="kv-v">60s</span></div>
+                <div class="kv-row"><span class="kv-k">Container ID</span><span class="kv-v">a3f8c91b2d04</span></div>
+                <div class="kv-row"><span class="kv-k">Data directory</span><span class="kv-v">/srv/mcm/survival-realm</span></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <p class="sec-label">Connection</p>
+            <div class="kv">
+                <div class="kv-row"><span class="kv-k">Address</span><span class="kv-v">127.0.0.1:25565</span></div>
+                <div class="kv-row"><span class="kv-k">Container</span><span class="kv-v">mcm-survival-realm</span></div>
+                <div class="kv-row"><span class="kv-k">Type</span><span class="kv-v">VANILLA</span></div>
+                <div class="kv-row"><span class="kv-k">RCON host</span><span class="kv-v">127.0.0.1</span></div>
+                <div class="kv-row"><span class="kv-k">RCON port</span><span class="kv-v">25575</span></div>
+                <div class="kv-row"><span class="kv-k">RCON password</span><span class="kv-v">mc_rcon_p4ss</span></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="env-head">
+                <p class="sec-label">Environment</p>
+                <button class="btn-solid" type="button">Quick edit</button>
+            </div>
+            <div class="kv">
+                <div class="kv-row"><span class="kv-k">EULA</span><span class="kv-v">TRUE</span></div>
+                <div class="kv-row"><span class="kv-k">MEMORY</span><span class="kv-v">4G</span></div>
+                <div class="kv-row"><span class="kv-k">TYPE</span><span class="kv-v">VANILLA</span></div>
+                <div class="kv-row"><span class="kv-k">VERSION</span><span class="kv-v">1.21.4</span></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <p class="sec-label">Logs</p>
+            <div class="logs-shell">
+                <div class="logs-head">
+                    <div class="logs-badges">
+                        <span class="logs-badge">running</span>
+                        <span class="logs-badge">08 Mar 2026, 09:14</span>
+                    </div>
+                </div>
+                <div class="logs-screen">
+                    <pre class="logs-pre">[09:14:02] [Server thread/INFO]: Starting minecraft server version 1.21.4
+[09:14:02] [Server thread/INFO]: Loading properties
+[09:14:03] [Server thread/INFO]: Default game type: SURVIVAL
+[09:14:03] [Server thread/INFO]: Generating keypair
+[09:14:04] [Server thread/INFO]: Starting Minecraft server on *:25565
+[09:14:05] [Server thread/INFO]: Using default channel type
+[09:14:07] [Server thread/INFO]: Preparing level "world"
+[09:14:08] [Server thread/INFO]: Preparing start region for dimension minecraft:overworld
+[09:14:10] [Server thread/INFO]: Done (6.241s)! For help, type "help"
+[09:14:10] [Server thread/INFO]: Time elapsed: 8212 ms
+[09:28:41] [Server thread/INFO]: Steve joined the game
+[09:31:05] [Server thread/INFO]: Alex joined the game
+[09:45:22] [Server thread/INFO]: &lt;Steve&gt; hey alex found diamonds
+[09:46:01] [Server thread/INFO]: &lt;Alex&gt; nice! where?
+[09:46:14] [Server thread/INFO]: &lt;Steve&gt; y=-58 under the mountain</pre>
+                </div>
+                <div class="logs-footer">
+                    <form class="logs-command-form">
+                        <span class="logs-prompt">&gt;</span>
+                        <input class="logs-command-input" type="text" placeholder="say Server admin online">
+                    </form>
+                    <div class="logs-status-row">
+                        <p class="logs-status">Watching `latest.log`.</p>
+                        <p class="logs-status">Press Enter to run a command.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <p class="sec-label">Data files</p>
+            <p style="margin: 0 0 0.9rem; font-size: 0.76rem; color: var(--muted); line-height: 1.5;">Browsing `/data` from the container bind mount. Works when the server is running or stopped.</p>
+            <div class="browser-grid">
+                <div class="browser-panel">
+                    <div class="browser-panel-head">
+                        <span class="browser-panel-title">Directory</span>
+                        <div class="breadcrumbs">
+                            <span class="breadcrumb-current">data</span>
+                        </div>
+                    </div>
+                    <div class="browser-list">
+                        <a class="browser-entry">
+                            <div class="browser-entry-main">
+                                <span class="browser-entry-name">logs</span>
+                                <span class="browser-badge is-dir">Dir</span>
+                            </div>
+                            <div class="browser-entry-meta">
+                                <span>—</span>
+                                <span>08 Mar 2026</span>
+                            </div>
+                        </a>
+                        <a class="browser-entry is-selected">
+                            <div class="browser-entry-main">
+                                <span class="browser-entry-name">server.properties</span>
+                                <span class="browser-badge">File</span>
+                            </div>
+                            <div class="browser-entry-meta">
+                                <span>2.1 KB</span>
+                                <span>08 Mar 2026</span>
+                            </div>
+                        </a>
+                        <a class="browser-entry">
+                            <div class="browser-entry-main">
+                                <span class="browser-entry-name">world</span>
+                                <span class="browser-badge is-dir">Dir</span>
+                            </div>
+                            <div class="browser-entry-meta">
+                                <span>—</span>
+                                <span>02 Jan 2026</span>
+                            </div>
+                        </a>
+                        <a class="browser-entry">
+                            <div class="browser-entry-main">
+                                <span class="browser-entry-name">ops.json</span>
+                                <span class="browser-badge">File</span>
+                            </div>
+                            <div class="browser-entry-meta">
+                                <span>312 B</span>
+                                <span>05 Jan 2026</span>
+                            </div>
+                        </a>
+                        <a class="browser-entry">
+                            <div class="browser-entry-main">
+                                <span class="browser-entry-name">whitelist.json</span>
+                                <span class="browser-badge">File</span>
+                            </div>
+                            <div class="browser-entry-meta">
+                                <span>448 B</span>
+                                <span>12 Jan 2026</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                <div class="browser-panel">
+                    <div class="browser-panel-head">
+                        <span class="browser-panel-title">Preview</span>
+                        <button class="btn-solid" type="button" style="padding: 0.35rem 0.7rem; font-size: 0.65rem;">Download</button>
+                    </div>
+                    <div class="browser-body">
+                        <p class="browser-path">data/server.properties</p>
+                        <div class="preview-meta">
+                            <div class="preview-meta-row">
+                                <span class="preview-meta-key">Name</span>
+                                <span class="preview-meta-value">server.properties</span>
+                            </div>
+                            <div class="preview-meta-row">
+                                <span class="preview-meta-key">Size</span>
+                                <span class="preview-meta-value">2.1 KB</span>
+                            </div>
+                            <div class="preview-meta-row">
+                                <span class="preview-meta-key">Modified</span>
+                                <span class="preview-meta-value">08 Mar 2026, 09:14</span>
+                            </div>
+                        </div>
+                        <pre class="preview-pre">motd=\u00A7aWelcome to Survival Realm!
+difficulty=normal
+gamemode=survival
+max-players=20
+pvp=true
+spawn-protection=16
+view-distance=10
+online-mode=true
+level-name=world
+level-seed=</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCM - login</title>
+    <style>
+        :root {
+            --bg: #0d0d0d;
+            --surface: #131313;
+            --line: #1c1c1c;
+            --text: #c8c8c8;
+            --muted: #444;
+            --danger: #ef4444;
+            --mono: "Cascadia Code", "Consolas", ui-monospace, monospace;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 1.5rem;
+            font-family: "Bahnschrift", system-ui, sans-serif;
+            background:
+                radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 35%),
+                var(--bg);
+            color: var(--text);
+        }
+
+        .shell {
+            width: min(100%, 26rem);
+            background: var(--surface);
+            border: 1px solid var(--line);
+            padding: 1.5rem;
+        }
+
+        .eyebrow {
+            margin: 0 0 0.65rem;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        h1 {
+            margin: 0 0 1.25rem;
+            font-size: 1.2rem;
+            line-height: 1.1;
+        }
+
+        form {
+            display: grid;
+            gap: 0.9rem;
+        }
+
+        label {
+            display: grid;
+            gap: 0.4rem;
+            font-size: 0.72rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        input {
+            width: 100%;
+            appearance: none;
+            border: 1px solid var(--line);
+            background: #0d0d0d;
+            color: var(--text);
+            padding: 0.75rem 0.8rem;
+            font: inherit;
+            font-size: 0.9rem;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #3c3c3c;
+        }
+
+        .error {
+            min-height: 1.2rem;
+            margin: 0;
+            color: var(--danger);
+            font-size: 0.78rem;
+            font-family: var(--mono);
+        }
+
+        button {
+            appearance: none;
+            width: fit-content;
+            border: 1px solid #383838;
+            background: #1c1c1c;
+            color: var(--text);
+            padding: 0.6rem 1rem;
+            font: inherit;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #242424;
+            border-color: #484848;
+        }
+    </style>
+</head>
+<body>
+    <section class="shell">
+        <p class="eyebrow">MCM admin</p>
+        <h1>Sign in</h1>
+        <form method="post" action="/login" autocomplete="off">
+            <label>
+                Username
+                <input type="text" name="username" value="admin" required>
+            </label>
+            <label>
+                Password
+                <input type="password" name="password" value="••••••••" required>
+            </label>
+            <p class="error"></p>
+            <button type="submit">Login</button>
+        </form>
+    </section>
+</body>
+</html>

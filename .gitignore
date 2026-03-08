@@ -20,3 +20,4 @@ dist/
 .env.*
 servers/
 database.db
+node_modules/
