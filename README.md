@@ -14,7 +14,7 @@ MCM is a small web UI and API for managing Minecraft server containers through t
 Run the installer directly from GitHub:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nothing035/mcm/master/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/nanderq/mcm/master/setup.sh | bash
 ```
 
 The script will prompt for:
