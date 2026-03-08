@@ -80,8 +80,16 @@ db = Database(str(DATABASE_PATH))
 MINECRAFT_IMAGE = "itzg/minecraft-server"
 MINECRAFT_PORT = 25565
 DEFAULT_STOP_DURATION = 60
-DOCKER_MEMORY_LIMIT_BYTES = 1024 * 1024 * 1024
-MINECRAFT_JVM_MEMORY = "768M"
+BYTES_PER_GIB = 1024 * 1024 * 1024
+RAM_ALLOCATION_OPTIONS = (1, 2, 4)
+DEFAULT_RAM_ALLOCATION = 1
+RAM_ALLOCATION_TO_JVM_MEMORY = {
+    1: "768M",
+    2: "1536M",
+    4: "3072M",
+}
+DOCKER_MEMORY_LIMIT_BYTES = DEFAULT_RAM_ALLOCATION * BYTES_PER_GIB
+MINECRAFT_JVM_MEMORY = RAM_ALLOCATION_TO_JVM_MEMORY[DEFAULT_RAM_ALLOCATION]
 MAX_FILE_PREVIEW_BYTES = 131072
 MAX_LOG_TAIL_BYTES = 131072
 RCON_CLI_TIMEOUT_SECONDS = 3.0
@@ -196,6 +204,7 @@ class ServerCreateRequest(BaseModel):
     eula: bool = True
     data_dir: str | None = None
     stop_duration: int = Field(default=DEFAULT_STOP_DURATION, ge=15, le=600)
+    ram_allocation: Literal[1, 2, 4] = DEFAULT_RAM_ALLOCATION
     environment: dict[str, ScalarValue] = Field(default_factory=dict)
 
 
@@ -1287,6 +1296,14 @@ def get_next_available_port(
     return port
 
 
+def get_container_memory_limit_bytes(ram_allocation: int) -> int:
+    return ram_allocation * BYTES_PER_GIB
+
+
+def get_minecraft_jvm_memory(ram_allocation: int) -> str:
+    return RAM_ALLOCATION_TO_JVM_MEMORY[ram_allocation]
+
+
 def build_container_environment(request: ServerCreateRequest) -> dict[str, str]:
     environment: dict[str, str] = {
         "EULA": normalize_scalar(request.eula),
@@ -1301,7 +1318,7 @@ def build_container_environment(request: ServerCreateRequest) -> dict[str, str]:
         environment[key] = normalize_scalar(value)
 
     # Keep the JVM heap below the container cap to leave room for non-heap memory.
-    environment["MEMORY"] = MINECRAFT_JVM_MEMORY
+    environment["MEMORY"] = get_minecraft_jvm_memory(request.ram_allocation)
 
     if environment.get("ENABLE_RCON", "TRUE").upper() != "TRUE":
         environment.setdefault("CREATE_CONSOLE_IN_PIPE", "TRUE")
@@ -1651,7 +1668,7 @@ def add_server(
         host_config = client.api.create_host_config(
             binds=volume_bindings,
             port_bindings={MINECRAFT_PORT: port},
-            mem_limit=DOCKER_MEMORY_LIMIT_BYTES,
+            mem_limit=get_container_memory_limit_bytes(request.ram_allocation),
         )
         container_config = client.api.create_container(
             image=MINECRAFT_IMAGE,
@@ -1927,6 +1944,8 @@ def dashboard(request: fastapi.Request) -> HTMLResponse:
                 ),
                 "default_port": suggested_port,
                 "default_stop_duration": DEFAULT_STOP_DURATION,
+                "default_ram_allocation": DEFAULT_RAM_ALLOCATION,
+                "ram_allocation_options": RAM_ALLOCATION_OPTIONS,
                 "server_type_options": COMMON_SERVER_TYPES,
             },
         ),

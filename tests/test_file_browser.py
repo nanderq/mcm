@@ -344,9 +344,10 @@ def test_get_next_available_port_returns_default_when_unused() -> None:
     assert main.get_next_available_port([25564, 25570]) == main.MINECRAFT_PORT
 
 
-def test_build_container_environment_enforces_fixed_jvm_memory() -> None:
+def test_build_container_environment_uses_selected_ram_allocation() -> None:
     request = main.ServerCreateRequest(
         name="Survival",
+        ram_allocation=4,
         data_dir="server-data",
         environment={
             "MEMORY": "2G",
@@ -356,11 +357,11 @@ def test_build_container_environment_enforces_fixed_jvm_memory() -> None:
 
     environment = main.build_container_environment(request)
 
-    assert environment["MEMORY"] == main.MINECRAFT_JVM_MEMORY
+    assert environment["MEMORY"] == main.get_minecraft_jvm_memory(4)
     assert environment["DIFFICULTY"] == "hard"
 
 
-def test_add_server_sets_one_gib_container_memory_limit(
+def test_add_server_sets_selected_container_memory_limit(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -409,6 +410,7 @@ def test_add_server_sets_one_gib_container_memory_limit(
     request = main.ServerCreateRequest(
         name="Survival",
         port=25565,
+        ram_allocation=4,
         data_dir=str(tmp_path / "server-data"),
     )
 
@@ -418,12 +420,12 @@ def test_add_server_sets_one_gib_container_memory_limit(
         {
             "binds": {str((tmp_path / "server-data").resolve()): {"bind": "/data", "mode": "rw"}},
             "port_bindings": {main.MINECRAFT_PORT: 25565},
-            "mem_limit": main.DOCKER_MEMORY_LIMIT_BYTES,
+            "mem_limit": main.get_container_memory_limit_bytes(4),
         }
     ]
-    assert container_calls[0]["environment"]["MEMORY"] == main.MINECRAFT_JVM_MEMORY
+    assert container_calls[0]["environment"]["MEMORY"] == main.get_minecraft_jvm_memory(4)
     assert fake_container.started is True
-    assert response.environment["MEMORY"] == main.MINECRAFT_JVM_MEMORY
+    assert response.environment["MEMORY"] == main.get_minecraft_jvm_memory(4)
 
 
 def test_dashboard_uses_next_available_port_in_page_data(
@@ -436,6 +438,8 @@ def test_dashboard_uses_next_available_port_in_page_data(
 
     assert response.status_code == 200
     assert '"default_port": 25567' in response.text
+    assert f'"default_ram_allocation": {main.DEFAULT_RAM_ALLOCATION}' in response.text
+    assert f'"ram_allocation_options": {json.dumps(list(main.RAM_ALLOCATION_OPTIONS))}' in response.text
 
 
 def test_pages_render_route_specific_titles(test_client: TestClient) -> None:

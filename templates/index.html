@@ -778,11 +778,13 @@
     </main>
 
     <script type="application/json" id="page-data">
-        {"server_types": {{ server_type_options | tojson }}, "default_port": {{ default_port }}, "default_stop": {{ default_stop_duration }}}
+        {"server_types": {{ server_type_options | tojson }}, "ram_allocation_options": {{ ram_allocation_options | tojson }}, "default_ram_allocation": {{ default_ram_allocation }}, "default_port": {{ default_port }}, "default_stop": {{ default_stop_duration }}}
     </script>
     <script>
         const _d = JSON.parse(document.getElementById('page-data').textContent);
         const SERVER_TYPES = _d.server_types;
+        const RAM_ALLOCATION_OPTIONS = _d.ram_allocation_options;
+        const DEFAULT_RAM_ALLOCATION = _d.default_ram_allocation;
         const DEFAULT_PORT = _d.default_port;
         const DEFAULT_STOP = _d.default_stop;
         const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -880,6 +882,14 @@
                     </div>
                     <div class="form-row wide">
                         <div class="field">
+                            <label for="cf-ram">RAM allocation</label>
+                            <select id="cf-ram" name="ram_allocation">
+                                ${RAM_ALLOCATION_OPTIONS.map(value => `<option value="${value}" ${value === DEFAULT_RAM_ALLOCATION ? 'selected' : ''}>${value}GB</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row wide">
+                        <div class="field">
                             <label for="cf-stop">Stop duration (s)</label>
                             <input id="cf-stop" name="stop_duration" type="number" value="${DEFAULT_STOP}" min="15" max="600">
                         </div>
@@ -964,6 +974,7 @@
                     version:       fd.get('version'),
                     type:          fd.get('type'),
                     status:        fd.get('status'),
+                    ram_allocation: parseInt(fd.get('ram_allocation'), 10),
                     stop_duration: parseInt(fd.get('stop_duration'), 10),
                     eula:          fd.get('eula') === 'on',
                 };
