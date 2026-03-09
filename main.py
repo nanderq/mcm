@@ -2068,6 +2068,7 @@ async def stream_server_logs_endpoint(
     request: fastapi.Request, server_id: int
 ) -> StreamingResponse:
     stream = stream_server_logs(request, server_id)
+
     return StreamingResponse(
         stream,
         media_type="text/event-stream",

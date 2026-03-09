@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+</head>
+<body>
+    <h1>WebSocket Test</h1>
+    <p id="message">Connecting...</p>
+</body>
+</html>
+<script>
+    const serverId = "0"; // Replace with actual server ID
+    const ws = new WebSocket(`ws://localhost:8000/ws/${serverId}`);
+
+    ws.onopen = () => {
+        document.getElementById("message").textContent = "WebSocket connection established.";
+    };
+
+    ws.onmessage = (event) => {
+        document.getElementById("message").textContent = `Received: ${event.data}`;
+    };
+
+    ws.onclose = () => {
+        document.getElementById("message").textContent = "WebSocket connection closed.";
+    };
+
+    ws.onerror = (error) => {
+        document.getElementById("message").textContent = `WebSocket error: ${error}`;
+    };
+</script>
